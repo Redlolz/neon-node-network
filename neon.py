@@ -1,16 +1,16 @@
-from wifi import Cell, Scheme
-
 import subprocess
 import os
 import http.server
 import ssl
 import _thread
 # Checking if packages are installed, since these are both pip packages
-try:
-    import wget
-except ModuleNotFoundError:
-    print("wget couldn't be imported, maybe it needs to be installed?")
-    print("Exiting program...")
+
+#try:
+#    import wget
+#except ModuleNotFoundError:
+#    print("wget couldn't be imported, maybe it needs to be installed?")
+#    print("Exiting program...")
+
 try:
     import netifaces
 except ModuleNotFoundError:
@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 # Get the wireless network card
 def getNetworkInterface():
     interface = netifaces.interfaces()
+    print(interface[len(interface) - 1])
     return interface[len(interface) - 1]
 
 # Create an acces point
@@ -35,13 +36,17 @@ def connectToNetwork():
     subprocess.check_call(['iwconfig', getNetworkInterface(), 'essid', 'Neon-Node'])
     subprocess.check_call(['dhclient', getNetworkInterface()])
 
+# Subprocess for connecting to other Neon Nodes
 def connectToNodesRoutine():
-    while True:
-        try:
-            connectToNetwork('Neon-Node')
-        except:
-            print("Couldn't find and/or connect to another node")
-            sleep(60)
+    interface = getNetworkInterface()
+    command = ['iwlist', interface, 'scan']
+    wifiNearby = subprocess.check_call(command)
+    #print(wifiNearby)
+    findNeon = wifiNearby.find('SSID: Neon-Node')
+    if findNeon == 15:
+        connectToNetwork()
+    else:
+        print("[WARNING] Couldn't find another node!")
 
 # Create an SSL certificate (PROBABLY BORKED)
 def createSSLCert():
@@ -66,8 +71,8 @@ def startHTTPSServer():
 #_thread.start_new_thread( createAP, () )
 #_thread.start_new_thread( startHTTPSServer, () )
 
-#connectToNodesRoutine()
-connectToNetwork()
+connectToNodesRoutine()
+#connectToNetwork()
 
 #while 1:
 #    pass
