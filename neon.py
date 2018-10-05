@@ -1,3 +1,4 @@
+import time
 import subprocess
 import os
 import http.server
@@ -20,7 +21,6 @@ except ModuleNotFoundError:
 # Get the wireless network card
 def getNetworkInterface():
     interface = netifaces.interfaces()
-    print(interface[len(interface) - 1])
     return interface[len(interface) - 1]
 
 # Create an acces point
@@ -31,22 +31,33 @@ def createAP():
 
 # Connect to a network (mostly other nodes)
 def connectToNetwork():
-    subprocess.check_call(['ifconfig', getNetworkInterface(), 'down'])
-    subprocess.check_call(['ifconfig', getNetworkInterface(), 'up'])
-    subprocess.check_call(['iwconfig', getNetworkInterface(), 'essid', 'Neon-Node'])
-    subprocess.check_call(['dhclient', getNetworkInterface()])
+    subprocess.check_call('ifconfig ' + getNetworkInterface() + ' down', shell=True)
+    subprocess.check_call('ifconfig ' + getNetworkInterface() + ' up', shell=True)
+    subprocess.check_call('iwconfig ' + getNetworkInterface() + ' essid Neon-Node', shell=True)
+    subprocess.check_call('dhclient ' + getNetworkInterface(), shell=True)
 
 # Subprocess for connecting to other Neon Nodes
 def connectToNodesRoutine():
-    interface = getNetworkInterface()
-    command = ['iwlist', interface, 'scan']
-    wifiNearby = subprocess.check_call(command)
-    #print(wifiNearby)
-    findNeon = wifiNearby.find('SSID: Neon-Node')
-    if findNeon == 15:
-        connectToNetwork()
+    checkWifi = subprocess.check_output('nmcli -t -f active,ssid dev wifi', shell=True)
+    checkWifi = checkWifi.decode().split('''\n''')
+    if 'yes:Neon-Node' in checkWifi:
+        print("Already connected to other node!")
     else:
-        print("[WARNING] Couldn't find another node!")
+        var = 1
+        while var == 1:
+            command = 'iwlist ' + getNetworkInterface() + ' scan | grep ESSID:'
+            print(command)
+            wifiNearby = subprocess.check_output(command, shell=True)    
+            print(wifiNearby)
+            wifiNearby = wifiNearby.decode().replace('\n', '')
+            findNeon = wifiNearby.split(' ')
+            print(findNeon)
+            if 'ESSID:"Neon-Node"' in findNeon:
+                connectToNetwork()
+                var = 0
+            else:
+                print("[WARNING] Couldn't find another node!")
+                time.sleep(40)
 
 # Create an SSL certificate (PROBABLY BORKED)
 def createSSLCert():
